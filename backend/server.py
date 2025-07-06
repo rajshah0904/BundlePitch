@@ -225,6 +225,31 @@ async def generate_copy(request: BundleRequest):
     # Generate copy using Claude
     copy = await generate_copy_with_claude(request.bundle_name, request.tone, valid_items)
     
+    # Automatically save to history
+    try:
+        tone_label = {
+            "warm": "Warm & Heartfelt",
+            "playful": "Playful & Fun", 
+            "minimal": "Minimal & Modern",
+            "luxury": "Luxury & Elegant",
+            "casual": "Casual & Friendly",
+            "professional": "Professional & Trustworthy"
+        }.get(request.tone, request.tone)
+        
+        history_item = CopyHistory(
+            bundle_name=request.bundle_name,
+            tone=tone_label,
+            copy=copy
+        )
+        
+        # Save to database
+        await db.copy_history.insert_one(history_item.dict())
+        logging.info(f"Saved copy history for bundle: {request.bundle_name}")
+        
+    except Exception as e:
+        logging.error(f"Error saving copy history: {str(e)}")
+        # Don't fail the main request if history saving fails
+    
     return copy
 
 @api_router.post("/save-copy", response_model=CopyHistory)
