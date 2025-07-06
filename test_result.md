@@ -122,15 +122,18 @@ backend:
 
   - task: "Copy Generation"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "testing"
         comment: "Need to test POST /api/generate-copy endpoint with sample bundle data"
+      - working: true
+        agent: "testing"
+        comment: "Copy generation endpoint is working correctly. POST /api/generate-copy returns status 200 with properly structured response containing title, pitch, bullets, and instagram fields. The response is well-formatted and appropriate for the provided bundle data."
 
   - task: "Copy History"
     implemented: true
