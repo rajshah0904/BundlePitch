@@ -10,6 +10,8 @@ import { Copy, Plus, Trash2, History, Sparkles } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { Toaster } from "./ui/toaster";
 import axios from "axios";
+import { useAuth } from "../hooks/useAuth";
+import { insertRequest, fetchUserRequests, countUserRequests } from "../lib/requests";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -21,7 +23,10 @@ const BundlePitchApp = () => {
   const [generatedCopy, setGeneratedCopy] = useState(null);
   const [copyHistory, setCopyHistory] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [email, setEmail] = useState("");
+  const [usageLimitReached, setUsageLimitReached] = useState(false);
   const { toast } = useToast();
+  const { session, signIn, signOut } = useAuth();
 
   const toneOptions = [
     { value: "warm", label: "Warm & Heartfelt" },
@@ -40,15 +45,33 @@ const BundlePitchApp = () => {
   };
 
   useEffect(() => {
-    loadCopyHistory();
-  }, []);
+    if (session) {
+      loadCopyHistory();
+      checkUsage();
+    }
+  }, [session]);
 
   const loadCopyHistory = async () => {
+    if (!session) return;
     try {
-      const response = await axios.get(`${API}/copy-history`);
-      setCopyHistory(response.data);
+      const data = await fetchUserRequests(session.user.id);
+      setCopyHistory(data);
     } catch (error) {
       console.error("Error loading copy history:", error);
+    }
+  };
+
+  const checkUsage = async () => {
+    if (!session) return;
+    try {
+      const count = await countUserRequests(session.user.id);
+      if (count >= 1 && !session.user.user_metadata?.is_subscribed) {
+        setUsageLimitReached(true);
+      } else {
+        setUsageLimitReached(false);
+      }
+    } catch (err) {
+      console.error('Usage check failed', err);
     }
   };
 
@@ -68,7 +91,26 @@ const BundlePitchApp = () => {
     setItems(newItems);
   };
 
+  const startCheckout = async () => {
+    try {
+      const response = await axios.post(`${BACKEND_URL}/create-checkout-session`, {
+        userId: session.user.id,
+      });
+      window.location.href = response.data.url;
+    } catch (err) {
+      console.error('Stripe error', err);
+    }
+  };
+
   const generateCopy = async () => {
+    if (!session) {
+      toast({ title: "Login Required", description: "Please log in first", variant: "destructive" });
+      return;
+    }
+    if (usageLimitReached) {
+      toast({ title: "Limit Reached", description: "You've used your free request. Upgrade to continue.", variant: "destructive" });
+      return;
+    }
     if (!bundleName || !tone || items.some(item => !item.title)) {
       toast({
         title: "Missing Information",
@@ -90,9 +132,16 @@ const BundlePitchApp = () => {
       });
       
       setGeneratedCopy(response.data);
-      
+
+      await insertRequest({
+        userId: session.user.id,
+        prompt: JSON.stringify({ bundle_name: bundleName, tone, items: validItems }),
+        result: JSON.stringify(response.data)
+      });
+
       // Reload history to show the new entry
       await loadCopyHistory();
+      await checkUsage();
       
       toast({
         title: "Copy Generated!",
@@ -120,14 +169,35 @@ const BundlePitchApp = () => {
   };
 
   const loadFromHistory = (historyItem) => {
-    setBundleName(historyItem.bundle_name);
-    setTone(toneOptions.find(t => t.label === historyItem.tone)?.value || "");
-    setGeneratedCopy(historyItem.copy);
+    try {
+      const prompt = JSON.parse(historyItem.prompt);
+      const result = JSON.parse(historyItem.result);
+      setBundleName(prompt.bundle_name || "");
+      setTone(prompt.tone || "");
+      setGeneratedCopy(result);
+    } catch (e) {
+      console.error('Failed to load history item', e);
+    }
   };
 
   const getToneName = (toneValue) => {
     return toneOptions.find(t => t.value === toneValue)?.label || toneValue;
   };
+
+  if (!session) {
+    return (
+      <div className="p-4 max-w-md mx-auto">
+        <h1 className="text-2xl font-bold mb-4">Login</h1>
+        <Input
+          placeholder="you@example.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="mb-2"
+        />
+        <Button onClick={() => signIn(email)}>Send Magic Link</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 p-4">
@@ -138,10 +208,17 @@ const BundlePitchApp = () => {
             <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
               BundlePitch.ai
             </h1>
+            <Button size="sm" variant="ghost" className="ml-4" onClick={signOut}>Sign Out</Button>
           </div>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             Create high-converting, emotionally engaging sales copy for your Etsy bundle listings
           </p>
+          {usageLimitReached && (
+            <div className="mt-2 text-red-600 flex flex-col items-center gap-2">
+              <p>You've used your free request. Upgrade to continue.</p>
+              <Button size="sm" onClick={startCheckout}>Upgrade for $5/month</Button>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -251,7 +328,7 @@ const BundlePitchApp = () => {
 
                 <Button
                   onClick={generateCopy}
-                  disabled={isGenerating}
+                  disabled={isGenerating || usageLimitReached}
                   className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white py-6 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
                 >
                   {isGenerating ? (
@@ -295,14 +372,14 @@ const BundlePitchApp = () => {
                         <CardContent className="p-3">
                           <div className="flex justify-between items-start mb-2">
                             <h4 className="font-medium text-sm truncate">
-                              {item.bundle_name}
+                              {JSON.parse(item.prompt).bundle_name}
                             </h4>
                             <Badge variant="secondary" className="text-xs">
-                              {getToneName(item.tone)}
+                              {getToneName(JSON.parse(item.prompt).tone)}
                             </Badge>
                           </div>
                           <p className="text-xs text-gray-500">
-                            {new Date(item.timestamp).toLocaleDateString()}
+                            {new Date(item.created_at).toLocaleDateString()}
                           </p>
                         </CardContent>
                       </Card>
