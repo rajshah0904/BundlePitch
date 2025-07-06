@@ -243,7 +243,7 @@ frontend:
 
   - task: "Copy History"
     implemented: true
-    working: "NA"
+    working: false
     file: "/app/frontend/src/components/BundlePitchApp.jsx"
     stuck_count: 0
     priority: "medium"
@@ -252,6 +252,9 @@ frontend:
       - working: "NA"
         agent: "testing"
         comment: "Need to test if the history sidebar loads and displays saved copies, and if clicking on history items loads them back into the form."
+      - working: false
+        agent: "testing"
+        comment: "Copy history sidebar loads correctly, but it doesn't display saved copies after generation. The message 'No copy history yet. Generate your first bundle copy!' continues to show even after successful copy generation. This suggests there might be an issue with saving generated copies to history or retrieving them from the backend."
 
   - task: "Error Handling"
     implemented: true
