@@ -3,14 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { Textarea } from "./ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Badge } from "./ui/badge";
 import { Separator } from "./ui/separator";
 import { Copy, Plus, Trash2, History, Sparkles } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { Toaster } from "./ui/toaster";
-import { mockGenerateCopy } from "../utils/mockData";
+import axios from "axios";
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
 
 const BundlePitchApp = () => {
   const [bundleName, setBundleName] = useState("");
@@ -38,11 +40,17 @@ const BundlePitchApp = () => {
   };
 
   useEffect(() => {
-    const savedHistory = localStorage.getItem("bundlePitchHistory");
-    if (savedHistory) {
-      setCopyHistory(JSON.parse(savedHistory));
-    }
+    loadCopyHistory();
   }, []);
+
+  const loadCopyHistory = async () => {
+    try {
+      const response = await axios.get(`${API}/copy-history`);
+      setCopyHistory(response.data);
+    } catch (error) {
+      console.error("Error loading copy history:", error);
+    }
+  };
 
   const addItem = () => {
     setItems([...items, { title: "", description: "", price: "" }]);
@@ -72,36 +80,35 @@ const BundlePitchApp = () => {
 
     setIsGenerating(true);
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    const copy = mockGenerateCopy({
-      bundleName,
-      tone,
-      items: items.filter(item => item.title)
-    });
-    
-    setGeneratedCopy(copy);
-    
-    // Save to history
-    const historyItem = {
-      id: Date.now(),
-      bundleName,
-      tone: toneOptions.find(t => t.value === tone)?.label,
-      timestamp: new Date().toISOString(),
-      copy
-    };
-    
-    const newHistory = [historyItem, ...copyHistory.slice(0, 9)]; // Keep last 10
-    setCopyHistory(newHistory);
-    localStorage.setItem("bundlePitchHistory", JSON.stringify(newHistory));
-    
-    setIsGenerating(false);
-    
-    toast({
-      title: "Copy Generated!",
-      description: "Your bundle copy has been generated successfully.",
-    });
+    try {
+      const validItems = items.filter(item => item.title.trim());
+      
+      const response = await axios.post(`${API}/generate-copy`, {
+        bundle_name: bundleName,
+        tone: tone,
+        items: validItems
+      });
+      
+      setGeneratedCopy(response.data);
+      
+      // Reload history to show the new entry
+      await loadCopyHistory();
+      
+      toast({
+        title: "Copy Generated!",
+        description: "Your bundle copy has been generated successfully.",
+      });
+      
+    } catch (error) {
+      console.error("Error generating copy:", error);
+      toast({
+        title: "Generation Failed",
+        description: error.response?.data?.detail || "Failed to generate copy. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const copyToClipboard = (text, type) => {
@@ -113,9 +120,13 @@ const BundlePitchApp = () => {
   };
 
   const loadFromHistory = (historyItem) => {
-    setBundleName(historyItem.bundleName);
+    setBundleName(historyItem.bundle_name);
     setTone(toneOptions.find(t => t.label === historyItem.tone)?.value || "");
     setGeneratedCopy(historyItem.copy);
+  };
+
+  const getToneName = (toneValue) => {
+    return toneOptions.find(t => t.value === toneValue)?.label || toneValue;
   };
 
   return (
@@ -226,7 +237,7 @@ const BundlePitchApp = () => {
                           <div>
                             <Label className="text-xs text-gray-600">Price</Label>
                             <Input
-                              placeholder="$0.00"
+                              placeholder="0.00"
                               value={item.price}
                               onChange={(e) => updateItem(index, "price", e.target.value)}
                               className="mt-1"
@@ -246,7 +257,7 @@ const BundlePitchApp = () => {
                   {isGenerating ? (
                     <>
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                      Generating...
+                      Generating with AI...
                     </>
                   ) : (
                     <>
@@ -284,10 +295,10 @@ const BundlePitchApp = () => {
                         <CardContent className="p-3">
                           <div className="flex justify-between items-start mb-2">
                             <h4 className="font-medium text-sm truncate">
-                              {item.bundleName}
+                              {item.bundle_name}
                             </h4>
                             <Badge variant="secondary" className="text-xs">
-                              {item.tone}
+                              {getToneName(item.tone)}
                             </Badge>
                           </div>
                           <p className="text-xs text-gray-500">
