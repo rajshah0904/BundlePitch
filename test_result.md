@@ -283,8 +283,7 @@ metadata:
 test_plan:
   current_focus:
     - "Copy History"
-  stuck_tasks:
-    - "Copy History"
+  stuck_tasks: []
   test_all: true
   test_priority: "high_first"
 
