@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Test the BundlePitch.ai backend API endpoints to ensure they work correctly."
+user_problem_statement: "Test the BundlePitch.ai frontend application to ensure it integrates properly with the backend and all features work correctly."
 
 backend:
   - task: "API Health Check"
@@ -180,19 +180,93 @@ backend:
         agent: "testing"
         comment: "Claude integration is working correctly. The API successfully generates tone-appropriate copy for the 'warm' tone. The generated content includes warm, cozy language and appropriate keywords. The response is well-structured and creative."
 
+frontend:
+  - task: "Initial Load & UI"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/BundlePitchApp.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test if the app loads without errors and all UI components render correctly."
+
+  - task: "Bundle Creation Form"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/BundlePitchApp.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test bundle name input, tone selection, and item management functionality."
+
+  - task: "Copy Generation"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/BundlePitchApp.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test if the Generate Copy button works and successfully generates copy with all required sections."
+
+  - task: "Copy to Clipboard"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/BundlePitchApp.jsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test if the copy buttons work for each section and toast notifications appear."
+
+  - task: "Copy History"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/BundlePitchApp.jsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test if the history sidebar loads and displays saved copies, and if clicking on history items loads them back into the form."
+
+  - task: "Error Handling"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/BundlePitchApp.jsx"
+    stuck_count: 0
+    priority: "low"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test if appropriate error messages are shown for invalid inputs and if API errors are handled gracefully."
+
 metadata:
   created_by: "testing_agent"
   version: "1.0"
   test_sequence: 0
-  run_ui: false
+  run_ui: true
 
 test_plan:
   current_focus:
-    - "API Health Check"
+    - "Initial Load & UI"
+    - "Bundle Creation Form"
     - "Copy Generation"
+    - "Copy to Clipboard"
     - "Copy History"
     - "Error Handling"
-    - "Claude Integration"
   stuck_tasks: []
   test_all: true
   test_priority: "high_first"
@@ -202,3 +276,5 @@ agent_communication:
     message: "Initializing test_result.md with backend API testing tasks. Will create and run backend_test.py to test all endpoints."
   - agent: "testing"
     message: "All backend API tests have been completed successfully. Created and executed backend_test.py which tested all required endpoints: health check, copy generation, copy history, error handling, and Claude integration. All tests passed with no issues. The API is working as expected and meets all the requirements specified in the review request."
+  - agent: "testing"
+    message: "Adding frontend testing tasks to test_result.md. Will create and run a comprehensive Playwright script to test all features of the BundlePitch.ai frontend application."
