@@ -137,15 +137,18 @@ backend:
 
   - task: "Copy History"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "testing"
         comment: "Need to test GET /api/copy-history endpoint to retrieve saved copies"
+      - working: true
+        agent: "testing"
+        comment: "Copy history endpoint is working correctly. GET /api/copy-history returns status 200 with a list of saved copies. The endpoint returned an empty array, which is expected since we haven't saved any copies yet."
 
   - task: "Error Handling"
     implemented: true
