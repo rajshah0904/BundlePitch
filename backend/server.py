@@ -1,7 +1,7 @@
 from fastapi import FastAPI, APIRouter, HTTPException
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
+from supabase import create_client, Client
 import os
 import logging
 from pathlib import Path
@@ -14,10 +14,10 @@ from emergentintegrations.llm.chat import LlmChat, UserMessage
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+# Supabase connection
+supabase_url = os.environ['SUPABASE_URL']
+supabase_key = os.environ['SUPABASE_SERVICE_KEY']
+supabase: Client = create_client(supabase_url, supabase_key)
 
 # Create the main app without a prefix
 app = FastAPI()
@@ -243,7 +243,7 @@ async def generate_copy(request: BundleRequest):
         )
         
         # Save to database
-        await db.copy_history.insert_one(history_item.dict())
+        supabase.table('copy_history').insert(history_item.dict()).execute()
         logging.info(f"Saved copy history for bundle: {request.bundle_name}")
         
     except Exception as e:
@@ -263,7 +263,7 @@ async def save_copy(request: BundleRequest, copy: GeneratedCopy):
         )
         
         # Save to database
-        result = await db.copy_history.insert_one(history_item.dict())
+        supabase.table('copy_history').insert(history_item.dict()).execute()
         
         return history_item
         
@@ -275,8 +275,8 @@ async def save_copy(request: BundleRequest, copy: GeneratedCopy):
 async def get_copy_history(limit: int = 10):
     """Get copy history"""
     try:
-        history = await db.copy_history.find().sort("timestamp", -1).limit(limit).to_list(limit)
-        return [CopyHistory(**item) for item in history]
+        response = supabase.table('copy_history').select('*').order('timestamp', desc=True).limit(limit).execute()
+        return [CopyHistory(**item) for item in response.data]
         
     except Exception as e:
         logging.error(f"Error retrieving copy history: {str(e)}")
@@ -286,13 +286,13 @@ async def get_copy_history(limit: int = 10):
 async def create_status_check(input: StatusCheckCreate):
     status_dict = input.dict()
     status_obj = StatusCheck(**status_dict)
-    _ = await db.status_checks.insert_one(status_obj.dict())
+    supabase.table('status_checks').insert(status_obj.dict()).execute()
     return status_obj
 
 @api_router.get("/status", response_model=List[StatusCheck])
 async def get_status_checks():
-    status_checks = await db.status_checks.find().to_list(1000)
-    return [StatusCheck(**status_check) for status_check in status_checks]
+    response = supabase.table('status_checks').select('*').execute()
+    return [StatusCheck(**status_check) for status_check in response.data]
 
 # Include the router in the main app
 app.include_router(api_router)
@@ -311,7 +311,3 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
