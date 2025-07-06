@@ -297,3 +297,5 @@ agent_communication:
     message: "Adding frontend testing tasks to test_result.md. Will create and run a comprehensive Playwright script to test all features of the BundlePitch.ai frontend application."
   - agent: "testing"
     message: "Completed testing of the BundlePitch.ai frontend application. Most features are working correctly, including initial load & UI, bundle creation form, copy generation, copy to clipboard, and error handling. However, there is an issue with the Copy History feature - it doesn't display saved copies after generation. This should be investigated and fixed."
+  - agent: "testing"
+    message: "Tested the Copy History feature after the backend fix. The feature is now working correctly. The history sidebar properly displays saved copies after generation, showing the bundle name, tone, and timestamp. Multiple history items are displayed correctly and ordered by timestamp (newest first). The automatic saving of copy history when generating copy is working as expected."
