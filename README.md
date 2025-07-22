@@ -1,6 +1,6 @@
 # BundlePitch.ai
 
-This project is a minimal example of a prompt-generation app that uses Supabase for authentication and persistence. Users get **one free request** before needing to subscribe via Stripe.
+This project is a prompt-generation app that uses Supabase for authentication and persistence. Users get **one free request** before needing to subscribe via Stripe.
 
 ## Database Structure
 
